@@ -84,3 +84,17 @@ uint balance1Adjusted = balance1.mul(1000).sub(amount1In.mul(3));
 // To ensure that after accounting for fees the invariant x * y >= k still holds true.
 require(balance0Adjusted.mul(balance1Adjusted) >= uint(_reserve0).mul(_reserve1).mul(1000**2), 'UniswapV2: K');
 ```
+
+## How to deploy locally Uniswap V2 Contracts
+
+### 1. Run a local Ethereum node through Hardhat
+
+```bash
+npx hardhat node
+```
+
+### 2. Deploy Uniswap V2 contracts
+
+```bash
+npx hardhat deploy --network localhost
+```

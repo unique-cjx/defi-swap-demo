@@ -15,3 +15,12 @@ docs/
 
 # OS
 *.DS_Store
+
+
+**/node_modules
+# Hardhat files
+**/cache
+**/artifacts
+
+# contract deployments
+**/deployments/localhost
