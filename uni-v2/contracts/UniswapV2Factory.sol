@@ -1,7 +1,9 @@
+// SPDX-License-Identifier: MIT
+
 pragma solidity =0.5.16;
 
 import '@uniswap/v2-core/contracts/interfaces/IUniswapV2Factory.sol';
-import '@uniswap/v2-core/contracts/UniswapV2Pair.sol';
+import './UniswapV2Pair.sol';
 
 contract UniswapV2Factory is IUniswapV2Factory {
     address public feeTo;

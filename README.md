@@ -87,14 +87,20 @@ require(balance0Adjusted.mul(balance1Adjusted) >= uint(_reserve0).mul(_reserve1)
 
 ## How to deploy locally Uniswap V2 Contracts
 
-### 1. Run a local Ethereum node through Hardhat
+### 1. Compile Uniswap V2 Contracts
+
+```bash
+npx hardhat compile
+```
+
+### 2. Run a local Ethereum node through Hardhat
 
 ```bash
 npx hardhat node
 ```
 
-### 2. Deploy Uniswap V2 contracts
+### 3. Test setup liquidity script
 
 ```bash
-npx hardhat deploy --network localhost
+forge script script/SetupLiquidity.sol -vvv
 ```

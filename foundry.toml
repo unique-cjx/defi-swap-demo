@@ -5,8 +5,10 @@ solc = "0.8.24"
 src = "src"
 out = "out"
 libs = ["lib"]
-remappings = []
-eth_rpc_url = ""
+remappings = [
+    "@openzeppelin/contracts=lib/openzeppelin-contracts/contracts"
+]
+eth_rpc_url="http://127.0.0.1:8545"
 
 [fmt]
 # [fmt]: code formatter options for `forge fmt`.

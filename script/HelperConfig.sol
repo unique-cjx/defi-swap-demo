@@ -1,9 +1,12 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+
+pragma solidity 0.8.24;
+
+import { Script } from "forge-std/Script.sol";
 
 import { MockV3Aggregator } from "../test/mocks/MockV3Aggregator.sol";
-import { Script } from "forge-std/Script.sol";
 import { ERC20Mock } from "../test/mocks/ERC20Mock.sol";
+import { WETH9Mock } from "../test/mocks/WETH9Mock.sol";
 
 contract HelperConfig is Script {
     NetworkConfig public activeNetworkConfig;
@@ -28,23 +31,26 @@ contract HelperConfig is Script {
         address uniswapRouter;
     }
 
+    uint256 public constant DEPOSITE_WETH_AMOUNT = 100 ether;
+    uint256 public constant DEPOSITE_DAI_AMOUNT = 100_000 ether;
+    uint256 public constant DEPOSITE_WBTC_AMOUNT = 10 ether;
+    uint256 public constant DEPOSITE_MKR_AMOUNT = 1000 ether;
+
     uint256 public immutable DEPLOYER_KEY;
 
     constructor() {
         uint256 deployKey;
         if (block.chainid == 11_155_111) {
-            activeNetworkConfig = getSepoliaEthConfig();
             deployKey = vm.envUint("PRIVATE_KEY");
+            activeNetworkConfig = getSepoliaEthConfig();
         } else {
-            activeNetworkConfig = getOrCreateAnvilEthConfig();
-            // Anvil runs local environment
             deployKey = 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80;
+            activeNetworkConfig = getOrCreateAnvilEthConfig();
         }
         DEPLOYER_KEY = deployKey;
     }
 
     function getSepoliaEthConfig() public view returns (NetworkConfig memory sepoliaNetworkConfig) {
-        sepoliaNetworkConfig = NetworkConfig({ });
         // Ref https://docs.chain.link/docs/ethereum-addresses
         // ...
     }
@@ -54,8 +60,23 @@ contract HelperConfig is Script {
         if (activeNetworkConfig.wethUsdPriceFeed != address(0)) {
             return activeNetworkConfig;
         }
+        // Fetch deployed Uniswap addresses from environment variables
+        address uniswapFactory = vm.envAddress("UNISWAP_FACTORY_ADDRESS");
+        if (uniswapFactory == address(0) || uniswapFactory.code.length == 0) {
+            revert("Uniswap factory not deployed");
+        }
+        address uniswapRouter = vm.envAddress("UNISWAP_ROUTER_ADDRESS");
+        if (uniswapRouter == address(0) || uniswapRouter.code.length == 0) {
+            revert("Uniswap router not deployed");
+        }
+
+        address wethAddress = vm.envAddress("WETH_ADDRESS");
+        if (wethAddress == address(0) || wethAddress.code.length == 0) {
+            WETH9Mock wethMock = new WETH9Mock();
+            wethAddress = address(wethMock);
+        }
+
         MockV3Aggregator ethUsdPriceFeed = new MockV3Aggregator(DECIMALS, ETH_USD_PRICE);
-        ERC20Mock wethMock = new ERC20Mock("WETH", "WETH", msg.sender, 1 ether);
 
         MockV3Aggregator btcUsdPriceFeed = new MockV3Aggregator(DECIMALS, BTC_USD_PRICE);
         ERC20Mock wbtcMock = new ERC20Mock("WBTC", "WBTC", msg.sender, 1 ether);
@@ -66,12 +87,8 @@ contract HelperConfig is Script {
         MockV3Aggregator mkrUsdPriceFeed = new MockV3Aggregator(DECIMALS, MKR_USD_PRICE);
         ERC20Mock mkrMock = new ERC20Mock("MKR", "MKR", msg.sender, 1 ether);
 
-        // Fetch deployed Uniswap addresses from environment variables
-        address uniswapFactory = vm.envAddress("UNISWAP_FACTORY_ADDRESS");
-        address uniswapRouter = vm.envAddress("UNISWAP_ROUTER_ADDRESS");
-
         anvilNetworkConfig = NetworkConfig({
-            weth: address(wethMock),
+            weth: wethAddress,
             wethUsdPriceFeed: address(ethUsdPriceFeed),
             wbtc: address(wbtcMock),
             wbtcUsdPriceFeed: address(btcUsdPriceFeed),
@@ -82,5 +99,9 @@ contract HelperConfig is Script {
             uniswapFactory: uniswapFactory,
             uniswapRouter: uniswapRouter
         });
+    }
+
+    function getActiveNetworkConfig() external view returns (NetworkConfig memory networkConfig) {
+        return activeNetworkConfig;
     }
 }
