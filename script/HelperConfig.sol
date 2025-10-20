@@ -4,6 +4,8 @@ pragma solidity 0.8.24;
 
 import { Script } from "forge-std/Script.sol";
 
+import { IERC20 } from "../src/interfaces/IERC20.sol";
+import { IWETH } from "../src/interfaces/IWETH.sol";
 import { MockV3Aggregator } from "../test/mocks/MockV3Aggregator.sol";
 import { ERC20Mock } from "../test/mocks/ERC20Mock.sol";
 import { WETH9Mock } from "../test/mocks/WETH9Mock.sol";
@@ -70,10 +72,10 @@ contract HelperConfig is Script {
             revert("Uniswap router not deployed");
         }
 
-        address wethAddress = vm.envAddress("WETH_ADDRESS");
-        if (wethAddress == address(0) || wethAddress.code.length == 0) {
+        address wethAddr = vm.envAddress("WETH_ADDRESS");
+        if (wethAddr == address(0) || wethAddr.code.length == 0) {
             WETH9Mock wethMock = new WETH9Mock();
-            wethAddress = address(wethMock);
+            wethAddr = address(wethMock);
         }
 
         MockV3Aggregator ethUsdPriceFeed = new MockV3Aggregator(DECIMALS, ETH_USD_PRICE);
@@ -88,7 +90,7 @@ contract HelperConfig is Script {
         ERC20Mock mkrMock = new ERC20Mock("MKR", "MKR", msg.sender, 1 ether);
 
         anvilNetworkConfig = NetworkConfig({
-            weth: wethAddress,
+            weth: address(wethAddr),
             wethUsdPriceFeed: address(ethUsdPriceFeed),
             wbtc: address(wbtcMock),
             wbtcUsdPriceFeed: address(btcUsdPriceFeed),
