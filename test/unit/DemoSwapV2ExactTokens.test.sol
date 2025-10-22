@@ -11,7 +11,7 @@ import { SetupLiquidity } from "../../script/SetupLiquidity.sol";
 import { HelperConfig } from "../../script/HelperConfig.sol";
 import { IWETH } from "../../src/interfaces/IWETH.sol";
 
-contract DemoSwapV2Test is Test {
+contract DemoSwapV2ExactTokens is Test {
     IUniswapV2Router02 public router;
     address public WETH;
     address public DAI;
