@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.20;
+pragma solidity 0.8.24;
 
 import { Script } from "forge-std/Script.sol";
 import { console } from "forge-std/console.sol";
@@ -10,6 +10,7 @@ import { IERC20 } from "../src/interfaces/IERC20.sol";
 import { ERC20Mock } from "../test/mocks/ERC20Mock.sol";
 import { HelperConfig } from "./HelperConfig.sol";
 import { IUniswapV2Router02 } from "../src/interfaces/uniswap-v2/IUniswapV2Router02.sol";
+import { IUniswapV2Factory } from "../src/interfaces/uniswap-v2/IUniswapV2Factory.sol";
 
 contract SetupLiquidity is Script {
     function run() external returns (HelperConfig) {
@@ -32,7 +33,6 @@ contract SetupLiquidity is Script {
         vm.startPrank(account0);
         IWETH weth = IWETH(payable(config.weth));
         weth.deposit{ value: helperConfig.DEPOSITE_WETH_AMOUNT() }();
-        console.log("Uniswap WETH balance: %18e", IERC20(config.weth).balanceOf(account0));
 
         // Approve all tokens for the router
         IERC20(config.weth).approve(config.uniswapRouter, type(uint256).max);
@@ -42,39 +42,28 @@ contract SetupLiquidity is Script {
 
         // Add liquidity for WETH/DAI pair (1 ETH ≈ 4K DAI based on prices)
         ERC20Mock(config.dai).mint(account0, helperConfig.DEPOSITE_DAI_AMOUNT());
-        console.log("Uniswap DAI balance: %18e", IERC20(config.dai).balanceOf(account0));
-        router.addLiquidity(config.weth, config.dai, 1 ether, 4000 ether, 0, 0, account0, block.timestamp);
+        router.addLiquidity(config.weth, config.dai, 100 ether, 400_000 ether, 0, 0, account0, block.timestamp);
 
-        // Add liquidity for WBTC/WETH pair (1 WBTC ≈ 25 ETH based on prices: 100k USD / 4k USD)
+        // Add liquidity for WBTC/WETH pair (1 WBTC ≈ 25 WETH)
         ERC20Mock(config.wbtc).mint(account0, helperConfig.DEPOSITE_WBTC_AMOUNT());
-        console.log("Uniswap WBTC balance: %18e", IERC20(config.wbtc).balanceOf(account0));
-        router.addLiquidity(
-            config.wbtc,
-            config.weth,
-            1 ether, // 1 WBTC (assuming 18 decimals for simplicity)
-            25 ether, // 25 WETH
-            0,
-            0,
-            account0,
-            block.timestamp
-        );
 
-        // Add liquidity for MKR/DAI pair (1 MKR ≈ 1000 DAI based on prices)
+        router.addLiquidity(config.wbtc, config.weth, 10 ether, 250 ether, 0, 0, account0, block.timestamp);
+
+        // Add liquidity for MKR/DAI pair (1 MKR ≈ 1000 DAI)
         ERC20Mock(config.mkr).mint(account0, helperConfig.DEPOSITE_MKR_AMOUNT());
-        console.log("Uniswap MKR balance: %18e", IERC20(config.mkr).balanceOf(account0));
-        router.addLiquidity(
-            config.mkr,
-            config.dai,
-            1 ether, // 1 MKR
-            1000 ether, // 1000 DAI
-            0,
-            0,
-            account0,
-            block.timestamp
-        );
+        router.addLiquidity(config.mkr, config.dai, 50 ether, 50_000 ether, 0, 0, account0, block.timestamp);
 
         vm.stopPrank();
-
+        console.log("-----LIQUIDITY-----");
+        // get all token balances in liquidity
+        IUniswapV2Factory factory = IUniswapV2Factory(router.factory());
+        address wethDaiPair = factory.getPair(config.weth, config.dai);
+        console.log("Uniswap WETH/DAI balance: %18e", IERC20(config.weth).balanceOf(wethDaiPair));
+        address mkrDaiPair = factory.getPair(config.mkr, config.dai);
+        console.log("Uniswap MKR balance: %18e", IERC20(config.mkr).balanceOf(mkrDaiPair));
+        address wbtcWethPair = factory.getPair(config.wbtc, config.weth);
+        console.log("Uniswap WBTC balance: %18e", IERC20(config.wbtc).balanceOf(wbtcWethPair));
+        console.log("-------------------");
         return helperConfig;
     }
 }

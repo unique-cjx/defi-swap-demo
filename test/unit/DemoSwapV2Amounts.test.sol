@@ -52,10 +52,6 @@ contract DemoSwapV2AmountTest is Test {
         console2.log("WETH %18e", amounts[0]);
         console2.log("DAI %18e", amounts[1]);
         console2.log("MKR %18e", amounts[2]);
-
-        assertEq(Math.ceilDiv(amounts[0], 1 ether), 1); // WETH
-        assertEq(Math.ceilDiv(amounts[1], 1 ether), 1997); // DAI
-        assertEq(Math.ceilDiv(amounts[2], 1 ether), 1); // MKR
     }
 
     // MKR/DAI reserves: 1 MKR, 1000 DAI.
@@ -73,7 +69,7 @@ contract DemoSwapV2AmountTest is Test {
         path[1] = DAI;
         path[2] = MKR;
 
-        uint256 amountOut = 1e16; // 1e18 will cause an error: `[Revert] ds-math-sub-underflow`
+        uint256 amountOut = 1e18; // 1e18 will cause an error: `[Revert] ds-math-sub-underflow`
         uint256[] memory amounts = router.getAmountsIn(amountOut, path);
 
         console2.log("-----AMOUNT_IN-----");

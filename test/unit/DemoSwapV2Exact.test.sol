@@ -19,6 +19,10 @@ contract DemoSwapV2Test is Test {
 
     address public testUser = makeAddr("user");
 
+    uint256 public WETHBalance;
+    uint256 public DAIBalance;
+    uint256 public MKRBalance;
+
     function setUp() public {
         SetupLiquidity setupLiquid = new SetupLiquidity();
         HelperConfig helperConfig = setupLiquid.run();
@@ -39,33 +43,38 @@ contract DemoSwapV2Test is Test {
         Iweth.approve(address(router), type(uint256).max);
         IERC20(DAI).approve(address(router), type(uint256).max);
         IERC20(MKR).approve(address(router), type(uint256).max);
-        console2.log("testUser WETH balance is: %18e", Iweth.balanceOf(testUser));
-        console2.log("testUser DAI balance is: %18e", IERC20(DAI).balanceOf(testUser));
-        console2.log("testUser MKR balance is: %18e", IERC20(MKR).balanceOf(testUser));
+
+        WETHBalance = Iweth.balanceOf(testUser);
+        DAIBalance = IERC20(DAI).balanceOf(testUser);
+        MKRBalance = IERC20(MKR).balanceOf(testUser);
+        console2.log("testUser WETH balance is: %18e", WETHBalance);
+        console2.log("testUser DAI balance is: %18e", DAIBalance);
+        console2.log("testUser MKR balance is: %18e", MKRBalance);
         vm.stopPrank();
     }
 
-    function test_SwapExactETHForTokens() public {
+    function test_SwapExactTokensForTokens() public {
         address[] memory path = new address[](3);
-        path[0] = WETH;
+        path[0] = MKR;
         path[1] = DAI;
-        path[2] = MKR;
+        path[2] = WETH;
 
-        uint256 amountIn = 1e18;
-        uint256 amountOutMin = 1;
+        uint256 MKRAmountIn = 5e18;
+        uint256 WETHAmountOutMin = 1e18; // Minimum amount of WETH to receive
 
         vm.prank(testUser);
         // amountIn: This is the amount of tokens the user will be sending in
         // amountOutMin: This is the minimum amount of output tokens the user expects
         // path: This is an array of addresses which define the token path for the swap
         uint256[] memory amounts =
-            router.swapExactTokensForTokens(amountIn, amountOutMin, path, testUser, block.timestamp);
-        console2.log("WETH: %18e", amounts[0]);
+            router.swapExactTokensForTokens(MKRAmountIn, WETHAmountOutMin, path, testUser, block.timestamp);
+        console2.log("MKR: %18e", amounts[0]);
         console2.log("DAI: %18e", amounts[1]);
-        console2.log("MKR: %18e", amounts[2]);
+        console2.log("WETH: %18e", amounts[2]);
 
-        uint256 MKRBalance = IERC20(MKR).balanceOf(testUser);
-        assertGe(MKRBalance, amountOutMin, "MKR balance of user");
+        uint256 swappedWETHBalance = IERC20(WETH).balanceOf(testUser);
+        console2.log("swapped WETH balance: %18e", swappedWETHBalance);
+        assertGe(swappedWETHBalance, WETHBalance + WETHAmountOutMin);
     }
 
     function test_SwapTokensForExactETH() public {
@@ -74,8 +83,8 @@ contract DemoSwapV2Test is Test {
         path[1] = DAI;
         path[2] = WETH;
 
-        uint256 amountOut = 0.1 * 1e18;
-        uint256 amountInMax = 10e18; // What is the maximum MKR the user is willing to spend buy 1 WETH
+        uint256 WETHAmountOut = 1e17; // 0.1 WETH
+        uint256 MKRAmountInMax = 1e18; // What is the maximum MKR the user is willing to spend buy 0.1 WETH
 
         vm.prank(testUser);
         // Calculation explanation (English):
@@ -101,13 +110,16 @@ contract DemoSwapV2Test is Test {
         //    - amounts[2] = WETH output (requested 0.1)
         //
         // These values come directly from Uniswap's getAmountIn math (constant product + 0.3% fee).
-        uint256[] memory amounts = router.swapTokensForExactETH(amountOut, amountInMax, path, testUser, block.timestamp);
+        uint256[] memory amounts =
+            router.swapTokensForExactETH(WETHAmountOut, MKRAmountInMax, path, testUser, block.timestamp);
         console2.log("MKR: %18e", amounts[0]);
         console2.log("DAI: %18e", amounts[1]);
         console2.log("WETH: %18e", amounts[2]);
 
-        uint256 WETHBalance = IERC20(WETH).balanceOf(testUser);
-        assertEq(WETHBalance, amountOut);
+        uint256 swappedWETHBalance = IERC20(WETH).balanceOf(testUser);
+        console2.log("user WETH balance: %18e", swappedWETHBalance);
+
+        assertEq(WETHAmountOut, amounts[2]);
     }
 
     function test_SwapTokensForExactTokens() public {
@@ -116,10 +128,11 @@ contract DemoSwapV2Test is Test {
         path[1] = DAI;
         path[2] = MKR;
 
-        uint256 amountOut = 0.2 * 1e18;
-        uint256 amountInMax = 1e18; // What is the maximum WETH the user is willing to spend buy the amount of MKR
+        uint256 MKRAmountOut = 1e18;
+        uint256 WETHAmountInMax = 0.5e18; // What is the maximum WETH the user is willing to spend buy the amount of MKR
 
         vm.prank(testUser);
+
         // The MKR/DAI pool starts at 1 MKR costing 2000 DAI.
         // Buying 0.5 MKR therefore requires about 1000 DAI.
         // The WETH/DAI pool price is 1 WETH for 4000 DAI.
@@ -128,12 +141,13 @@ contract DemoSwapV2Test is Test {
         // meaning the user needs to spend about 0.25 WETH to get 1000 DAI.
         // As a result, the user spends roughly 0.25 WETH to receive 0.5 MKR
         uint256[] memory amounts =
-            router.swapTokensForExactTokens(amountOut, amountInMax, path, testUser, block.timestamp);
+            router.swapTokensForExactTokens(MKRAmountOut, WETHAmountInMax, path, testUser, block.timestamp);
         console2.log("WETH: %18e", amounts[0]);
         console2.log("DAI: %18e", amounts[1]);
         console2.log("MKR: %18e", amounts[2]);
 
-        uint256 MKRBalance = IERC20(MKR).balanceOf(testUser);
-        assertEq(MKRBalance, amountOut, "MKR balance of user");
+        uint256 swappedMKRBalance = IERC20(MKR).balanceOf(testUser);
+        console2.log("swapped MKR balance: %18e", swappedMKRBalance);
+        assertEq(swappedMKRBalance, MKRAmountOut + MKRBalance);
     }
 }

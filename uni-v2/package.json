@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "deploy": "hh deploy --network localhost",
+    "deploy": "hh deploy --network hardhat",
     "keccak256": "hh run script/keccak256_uniswapv2pair.js"
   },
   "dependencies": {

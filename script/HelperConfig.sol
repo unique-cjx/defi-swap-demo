@@ -33,10 +33,11 @@ contract HelperConfig is Script {
         address uniswapRouter;
     }
 
-    uint256 public constant DEPOSITE_WETH_AMOUNT = 100 ether;
-    uint256 public constant DEPOSITE_DAI_AMOUNT = 100_000 ether;
     uint256 public constant DEPOSITE_WBTC_AMOUNT = 10 ether;
-    uint256 public constant DEPOSITE_MKR_AMOUNT = 1000 ether;
+    uint256 public constant DEPOSITE_WETH_AMOUNT = 1000 ether;
+
+    uint256 public constant DEPOSITE_MKR_AMOUNT = 100 ether;
+    uint256 public constant DEPOSITE_DAI_AMOUNT = 100_000_000 ether;
 
     uint256 public immutable DEPLOYER_KEY;
 
