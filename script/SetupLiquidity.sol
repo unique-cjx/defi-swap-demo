@@ -61,7 +61,7 @@ contract SetupLiquidity is Script {
 
         // Add liquidity for MKR/DAI pair (1 MKR ≈ 1000 DAI based on prices)
         ERC20Mock(config.mkr).mint(account0, helperConfig.DEPOSITE_MKR_AMOUNT());
-        console.log("MKR balance: %18e", IERC20(config.mkr).balanceOf(account0));
+        console.log("Uniswap MKR balance: %18e", IERC20(config.mkr).balanceOf(account0));
         router.addLiquidity(
             config.mkr,
             config.dai,

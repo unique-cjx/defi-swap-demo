@@ -57,32 +57,6 @@
     }
 ```
 
-## SwapTokensForExactTokens function
-
-```solidity
-    // NOTE: swap min input for specified output
-    // max in = 3000 DAI
-    // out =  1 WETH
-    function swapTokensForExactTokens(
-        uint amountOut,
-        uint amountInMax,
-        address[] calldata path,
-        address to,
-        uint deadline
-    ) external virtual override ensure(deadline) returns (uint[] memory amounts) {
-        // NOTE: calculates amounts based on the desired amountOut
-        amounts = UniswapV2Library.getAmountsIn(factory, amountOut, path);
-        // NOTE: checks if the amounts is less than or equal to the user's max input
-        require(amounts[0] <= amountInMax, 'UniswapV2Router: EXCESSIVE_INPUT_AMOUNT');
-        // NOTE: transfers the user's input token to the first pair contract for trading
-        TransferHelper.safeTransferFrom(
-            path[0], msg.sender, UniswapV2Library.pairFor(factory, path[0], path[1]), amounts[0]
-        );
-        // NOTE: performs the swap in the loop, traversing through all pairs in the path
-        _swap(amounts, path, to);
-    }
-```
-
 ## GetAmountsIn function
 
 ```solidity
@@ -130,4 +104,30 @@
         }
     }
 ​
+```
+
+## SwapTokensForExactTokens function
+
+```solidity
+    // NOTE: swap min input for specified output
+    // max in = 3000 DAI
+    // out =  1 WETH
+    function swapTokensForExactTokens(
+        uint amountOut,
+        uint amountInMax,
+        address[] calldata path,
+        address to,
+        uint deadline
+    ) external virtual override ensure(deadline) returns (uint[] memory amounts) {
+        // NOTE: calculates amounts based on the desired amountOut
+        amounts = UniswapV2Library.getAmountsIn(factory, amountOut, path);
+        // NOTE: checks if the amounts is less than or equal to the user's max input
+        require(amounts[0] <= amountInMax, 'UniswapV2Router: EXCESSIVE_INPUT_AMOUNT');
+        // NOTE: transfers the user's input token to the first pair contract for trading
+        TransferHelper.safeTransferFrom(
+            path[0], msg.sender, UniswapV2Library.pairFor(factory, path[0], path[1]), amounts[0]
+        );
+        // NOTE: performs the swap in the loop, traversing through all pairs in the path
+        _swap(amounts, path, to);
+    }
 ```

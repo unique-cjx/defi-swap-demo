@@ -5,6 +5,7 @@ pragma solidity 0.8.24;
 import { Test, console2 } from "forge-std/Test.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import { ERC20Mock } from "../../test/mocks/ERC20Mock.sol";
 import { IUniswapV2Router02 } from "../../src/interfaces/uniswap-v2/IUniswapV2Router02.sol";
 import { SetupLiquidity } from "../../script/SetupLiquidity.sol";
 import { HelperConfig } from "../../script/HelperConfig.sol";
@@ -30,10 +31,17 @@ contract DemoSwapV2Test is Test {
 
         IWETH Iweth = IWETH(payable(config.weth));
         deal(testUser, 10 ether); // ensure testUser has enough ETH
+        ERC20Mock(DAI).mint(testUser, 10_000 ether);
+        ERC20Mock(MKR).mint(testUser, 100 ether);
+
         vm.startPrank(testUser);
         Iweth.deposit{ value: 10 ether }();
         Iweth.approve(address(router), type(uint256).max);
+        IERC20(DAI).approve(address(router), type(uint256).max);
+        IERC20(MKR).approve(address(router), type(uint256).max);
         console2.log("testUser WETH balance is: %18e", Iweth.balanceOf(testUser));
+        console2.log("testUser DAI balance is: %18e", IERC20(DAI).balanceOf(testUser));
+        console2.log("testUser MKR balance is: %18e", IERC20(MKR).balanceOf(testUser));
         vm.stopPrank();
     }
 
@@ -60,13 +68,55 @@ contract DemoSwapV2Test is Test {
         assertGe(MKRBalance, amountOutMin, "MKR balance of user");
     }
 
+    function test_SwapTokensForExactETH() public {
+        address[] memory path = new address[](3);
+        path[0] = MKR;
+        path[1] = DAI;
+        path[2] = WETH;
+
+        uint256 amountOut = 0.1 * 1e18;
+        uint256 amountInMax = 10e18; // What is the maximum MKR the user is willing to spend buy 1 WETH
+
+        vm.prank(testUser);
+        // Calculation explanation (English):
+        // 1) Uniswap router computes required input amounts backwards through the path.
+        //    It uses getAmountIn which implements the constant-product formula with a 0.3% fee:
+        //      amountIn = (reserveIn * amountOut * 1000) / ((reserveOut - amountOut) * 997) + 1
+        //
+        // 2) For the last hop (WETH <- DAI):
+        //    - reserveIn = DAI reserve, reserveOut = WETH reserve.
+        //    - Given desired WETH output (amountOut = 0.1 WETH), the router computes how much DAI is required
+        //      from the WETH/DAI pool using the formula above.
+        //    - This yields DAI ≈ 445.781789813886102753 (logged as amounts[1]).
+        //
+        // 3) For the previous hop (DAI <- MKR):
+        //    - reserveIn = MKR reserve, reserveOut = DAI reserve.
+        //    - To obtain the DAI amount computed in step 2, the router computes how much MKR is required
+        //      from the MKR/DAI pool using the same getAmountIn formula.
+        //    - This yields MKR ≈ 0.806763745892816193 (logged as amounts[0]).
+        //
+        // 4) Summary:
+        //    - amounts[0] = MKR input required (≈ 0.8067637459)
+        //    - amounts[1] = DAI intermediate required (≈ 445.7817898139)
+        //    - amounts[2] = WETH output (requested 0.1)
+        //
+        // These values come directly from Uniswap's getAmountIn math (constant product + 0.3% fee).
+        uint256[] memory amounts = router.swapTokensForExactETH(amountOut, amountInMax, path, testUser, block.timestamp);
+        console2.log("MKR: %18e", amounts[0]);
+        console2.log("DAI: %18e", amounts[1]);
+        console2.log("WETH: %18e", amounts[2]);
+
+        uint256 WETHBalance = IERC20(WETH).balanceOf(testUser);
+        assertEq(WETHBalance, amountOut);
+    }
+
     function test_SwapTokensForExactTokens() public {
         address[] memory path = new address[](3);
         path[0] = WETH;
         path[1] = DAI;
         path[2] = MKR;
 
-        uint256 amountOut = 0.5 * 1e18;
+        uint256 amountOut = 0.2 * 1e18;
         uint256 amountInMax = 1e18; // What is the maximum WETH the user is willing to spend buy the amount of MKR
 
         vm.prank(testUser);
