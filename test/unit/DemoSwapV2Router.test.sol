@@ -9,7 +9,7 @@ import { IUniswapV2Router02 } from "../../src/interfaces/uniswap-v2/IUniswapV2Ro
 import { SetupLiquidity } from "../../script/SetupLiquidity.sol";
 import { HelperConfig } from "../../script/HelperConfig.sol";
 
-contract DemoSwapV2AmountTest is Test {
+contract DemoSwapV2RouterTest is Test {
     IUniswapV2Router02 public router;
     address public WETH;
     address public DAI;
@@ -39,7 +39,7 @@ contract DemoSwapV2AmountTest is Test {
     // DAI -> MKR (reserveIn = 1000 DAI, reserveOut = 1 MKR, amountIn ≈ 1996.995)
     // amountOut_MKR ≈ (1 * 1996.995 * 997) / (1000 * 1000 + 1996.995 * 997) ≈ 0.6656641064
     //
-    function test_getAmountsOut() public {
+    function test_getAmountsOut() public view {
         address[] memory path = new address[](3);
         path[0] = WETH;
         path[1] = DAI;
@@ -63,13 +63,13 @@ contract DemoSwapV2AmountTest is Test {
     // WETH/DAI reserves: 1 WETH, 4000 DAI.
     // To get about 10.1314 DAI:
     // amountIn_WETH ≈ (1 * 10.1314 * 1000) / ((4000 - 10.1314) * 997) ≈ 0.002546923473843468 WETH
-    function test_getAmountsIn() public {
+    function test_getAmountsIn() public view {
         address[] memory path = new address[](3);
         path[0] = WETH;
         path[1] = DAI;
         path[2] = MKR;
 
-        uint256 amountOut = 1e18; // 1e18 will cause an error: `[Revert] ds-math-sub-underflow`
+        uint256 amountOut = 1e18;
         uint256[] memory amounts = router.getAmountsIn(amountOut, path);
 
         console2.log("-----AMOUNT_IN-----");
