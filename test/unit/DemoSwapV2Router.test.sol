@@ -5,25 +5,18 @@ pragma solidity 0.8.24;
 import { Test, console2 } from "forge-std/Test.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
+import { IWETH } from "../../src/interfaces/IWETH.sol";
+import { IERC20 } from "../../src/interfaces/IERC20.sol";
 import { IUniswapV2Router02 } from "../../src/interfaces/uniswap-v2/IUniswapV2Router02.sol";
+import { IUniswapV2Factory } from "../../src/interfaces/uniswap-v2/IUniswapV2Factory.sol";
 import { SetupLiquidity } from "../../script/SetupLiquidity.sol";
 import { HelperConfig } from "../../script/HelperConfig.sol";
+import { ERC20Mock } from "../../test/mocks/ERC20Mock.sol";
+import { BaseDemoSwapV2Test } from "./BaseDemoSwapV2Test.sol";
 
-contract DemoSwapV2RouterTest is Test {
-    IUniswapV2Router02 public router;
-    address public WETH;
-    address public DAI;
-    address public MKR;
-
+contract DemoSwapV2RouterTest is Test, BaseDemoSwapV2Test {
     function setUp() public {
-        SetupLiquidity setupLiquid = new SetupLiquidity();
-        HelperConfig helperConfig = setupLiquid.run();
-        HelperConfig.NetworkConfig memory config = helperConfig.getActiveNetworkConfig();
-
-        router = IUniswapV2Router02(config.uniswapRouter);
-        WETH = config.weth;
-        DAI = config.dai;
-        MKR = config.mkr;
+        _setUp();
     }
 
     // Liquidity you added in SetupLiquidity:
@@ -76,5 +69,34 @@ contract DemoSwapV2RouterTest is Test {
         console2.log("WETH %18e", amounts[0]);
         console2.log("DAI %18e", amounts[1]);
         console2.log("MKR %18e", amounts[2]);
+    }
+
+    function test_RemoveLiquidity() public {
+        ERC20Mock SOL = new ERC20Mock("SOL", "SOL", msg.sender, 1 ether);
+        vm.startPrank(testUser);
+
+        SOL.mint(testUser, 100 ether);
+        SOL.approve(address(router), type(uint256).max);
+
+        // Add liquidity for SOL/DAI(1 SOL ≈ 200 DAI)
+        uint256 solAmount = 10 ether;
+        (,, uint256 liquidity) =
+            router.addLiquidity(address(SOL), DAI, solAmount, 2000 ether, 1, 1, testUser, block.timestamp);
+        console2.log("Liquidity tokens minted: %18e", liquidity);
+
+        IUniswapV2Factory factory = IUniswapV2Factory(router.factory());
+        address pair = factory.getPair(address(SOL), DAI);
+        uint256 mintedSolAmount = SOL.balanceOf(pair);
+        assertEq(solAmount, mintedSolAmount);
+
+        // Remove liquidity from SOL/DAI
+        IERC20(pair).approve(address(router), liquidity);
+        (uint256 removedSolAmount, uint256 removedDaiAmount) =
+            router.removeLiquidity(address(SOL), DAI, liquidity, 1, 1, testUser, block.timestamp);
+        vm.stopPrank();
+
+        console2.log("Removed SOL amount: %18e", removedSolAmount);
+        console2.log("Removed DAI amount: %18e", removedDaiAmount);
+        assertEq(IERC20(pair).balanceOf(testUser), 0);
     }
 }

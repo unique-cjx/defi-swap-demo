@@ -58,7 +58,7 @@ contract SetupLiquidity is Script {
         // get all token balances in liquidity
         IUniswapV2Factory factory = IUniswapV2Factory(router.factory());
         address wethDaiPair = factory.getPair(config.weth, config.dai);
-        console.log("Uniswap WETH/DAI balance: %18e", IERC20(config.weth).balanceOf(wethDaiPair));
+        console.log("Uniswap WETH balance: %18e", IERC20(config.weth).balanceOf(wethDaiPair));
         address mkrDaiPair = factory.getPair(config.mkr, config.dai);
         console.log("Uniswap MKR balance: %18e", IERC20(config.mkr).balanceOf(mkrDaiPair));
         address wbtcWethPair = factory.getPair(config.wbtc, config.weth);

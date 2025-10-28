@@ -210,3 +210,27 @@ The swap function is the core functionality of this contract, responsible for sw
         _swap(amounts, path, to);
     }
 ```
+
+## the Add Liquidity whole process
+<img width="518" height="368" alt="Image" src="../../img/add_liquidity.png" />
+
+```
+@startuml
+title Add Liquidity
+
+actor User as U
+
+box "Uniswap V2" #LightGray
+participant Router as R
+participant Factory as F
+participant "DAI/WETH Pair" as Pair
+end box
+
+U -[#green]> R : 1. addLiquidity()
+R -> F : 2. getPair and createPair()
+F -> Pair : 3. create2()
+R -> Pair : 4. transferFrom(DAI, WETH)
+R -> Pair : 5. mint()
+
+@enduml
+```
