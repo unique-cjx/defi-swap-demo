@@ -29,7 +29,7 @@ abstract contract BaseDemoSwapV2Test is Test {
     uint256 public MKRBalance;
 
     /// @notice Sets up router, tokens, balances, and approvals for the test user
-    function _setUp() public virtual {
+    function _setUp() public {
         SetupLiquidity setupLiquid = new SetupLiquidity();
         HelperConfig helperConfig = setupLiquid.run();
         HelperConfig.NetworkConfig memory config = helperConfig.getActiveNetworkConfig();

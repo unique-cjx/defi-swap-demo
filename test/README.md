@@ -261,6 +261,20 @@ function swap(uint amount0Out, uint amount1Out, address to, bytes calldata data)
 
 ```
 
+# Create Pair
+
+`createPair` function inside the Uniswap V2 Factory contract, which is responsible for managing the swapping of tokens and adding and removing liquidity.
+
+## How the Create Pair Function Works
+1. Check for Identical Tokens
+2. Sort Tokens. Ensuring that the smaller address is assigned as token0 and the larger as token1 in the Pair contract. 
+3. Check for Existing Pair
+4. Deploy Pair Contract using create2
+5. Initialize Pair Contract 
+6. Store Pair Address. The function updates the `getPair` mapping with the deployed Pair contract address and the associated token0 and token1 addresses
+
+> `create2` function it allows the address of the Pair contract to be calculated directly from the addresses of the tokens that will be traded. This eliminates the need for a separate deployment transaction for each new Pair contract.
+
 # Create Pool
 
 ## The Whole Add Liquidity Process
@@ -282,7 +296,7 @@ end box
 U -[#green]> R : 1. addLiquidity()
 R -> F : 2. getPair and createPair()
 F -> Pair : 3. create2()
-R -> Pair : 4. transferFrom(DAI, WETH)
+U -[#green]> R : 4. transferFrom(DAI, WETH)
 R -> Pair : 5. mint()
 
 @enduml

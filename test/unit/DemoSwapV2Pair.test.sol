@@ -10,47 +10,11 @@ import { IUniswapV2Router02 } from "../../src/interfaces/uniswap-v2/IUniswapV2Ro
 import { SetupLiquidity } from "../../script/SetupLiquidity.sol";
 import { HelperConfig } from "../../script/HelperConfig.sol";
 import { IWETH } from "../../src/interfaces/IWETH.sol";
+import { BaseDemoSwapV2Test } from "./BaseDemoSwapV2Test.sol";
 
-contract DemoSwapV2PairTest is Test {
-    IUniswapV2Router02 public router;
-    address public WETH;
-    address public DAI;
-    address public MKR;
-
-    address public testUser = makeAddr("user");
-
-    uint256 public WETHBalance;
-    uint256 public DAIBalance;
-    uint256 public MKRBalance;
-
+contract DemoSwapV2PairTest is Test, BaseDemoSwapV2Test {
     function setUp() public {
-        SetupLiquidity setupLiquid = new SetupLiquidity();
-        HelperConfig helperConfig = setupLiquid.run();
-        HelperConfig.NetworkConfig memory config = helperConfig.getActiveNetworkConfig();
-
-        router = IUniswapV2Router02(config.uniswapRouter);
-        WETH = config.weth;
-        MKR = config.mkr;
-        DAI = config.dai;
-
-        IWETH Iweth = IWETH(payable(config.weth));
-        deal(testUser, 10 ether); // ensure testUser has enough ETH
-        ERC20Mock(DAI).mint(testUser, 10_000 ether);
-        ERC20Mock(MKR).mint(testUser, 100 ether);
-
-        vm.startPrank(testUser);
-        Iweth.deposit{ value: 10 ether }();
-        Iweth.approve(address(router), type(uint256).max);
-        IERC20(DAI).approve(address(router), type(uint256).max);
-        IERC20(MKR).approve(address(router), type(uint256).max);
-
-        WETHBalance = Iweth.balanceOf(testUser);
-        DAIBalance = IERC20(DAI).balanceOf(testUser);
-        MKRBalance = IERC20(MKR).balanceOf(testUser);
-        console2.log("testUser WETH balance is: %18e", WETHBalance);
-        console2.log("testUser DAI balance is: %18e", DAIBalance);
-        console2.log("testUser MKR balance is: %18e", MKRBalance);
-        vm.stopPrank();
+        _setUp();
     }
 
     function test_SwapExactTokensForTokens() public {

@@ -93,13 +93,34 @@ require(balance0Adjusted.mul(balance1Adjusted) >= uint(_reserve0).mul(_reserve1)
 npx hardhat compile
 ```
 
-### 2. Run a local Ethereum node through Hardhat
+### 2. Calculate Hash for UniswapV2Pair contract
+
+```bash
+npm run keccak256
+```
+
+### 3. Replace the hex string in `UniswapV2Library.sol`
+
+```solidity
+// ... existing code ...
+function pairFor(address factory, address tokenA, address tokenB) internal pure returns (address pair) {
+    (address token0, address token1) = sortTokens(tokenA, tokenB);
+    pair = address(uint(keccak256(abi.encodePacked(
+            hex'ff',
+            factory,
+            keccak256(abi.encodePacked(token0, token1)),
+            hex'??????' // init code hash(uniswapV2Pair)
+        ))));
+}
+```
+
+### 4. Run a local Ethereum node through Hardhat
 
 ```bash
 npx hardhat node
 ```
 
-### 3. Test setup liquidity script
+### 5. Test setup liquidity script
 
 ```bash
 forge script script/SetupLiquidity.sol -vvv
