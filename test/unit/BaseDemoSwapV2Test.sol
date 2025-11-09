@@ -42,13 +42,13 @@ abstract contract BaseDemoSwapV2Test is Test {
         IWETH iweth = IWETH(payable(WETH));
 
         // Mint and deposit tokens to test user
-        deal(testUser, 10 ether);
+        deal(testUser, 100 ether);
         ERC20Mock(DAI).mint(testUser, 10_000 ether);
-        ERC20Mock(MKR).mint(testUser, 100 ether);
+        ERC20Mock(MKR).mint(testUser, 1000 ether);
 
         vm.startPrank(testUser);
         // approve router to spend tokens
-        iweth.deposit{ value: 10 ether }();
+        iweth.deposit{ value: 50 ether }();
         iweth.approve(address(router), type(uint256).max);
         IERC20(DAI).approve(address(router), type(uint256).max);
         IERC20(MKR).approve(address(router), type(uint256).max);
@@ -60,6 +60,7 @@ abstract contract BaseDemoSwapV2Test is Test {
         console2.log("testUser WETH balance is: %18e", WETHBalance);
         console2.log("testUser DAI balance is: %18e", DAIBalance);
         console2.log("testUser MKR balance is: %18e", MKRBalance);
+        console2.log("-------------------");
         vm.stopPrank();
     }
 

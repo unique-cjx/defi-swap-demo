@@ -99,4 +99,25 @@ contract DemoSwapV2RouterTest is Test, BaseDemoSwapV2Test {
         console2.log("Removed DAI amount: %18e", removedDaiAmount);
         assertEq(IERC20(pair).balanceOf(testUser), 0);
     }
+
+    function test_AddLiquidityETH() public {
+        ERC20Mock SOL = new ERC20Mock("SOL", "SOL", msg.sender, 1 ether);
+        vm.startPrank(testUser);
+
+        SOL.mint(testUser, 100 ether);
+        SOL.approve(address(router), type(uint256).max);
+
+        uint256 ethToAdd = 1 ether;
+        (uint256 solAmount, uint256 wethAmount, uint256 liquidity) =
+            router.addLiquidityETH{ value: ethToAdd }(address(SOL), 20 ether, 1, 1, testUser, block.timestamp);
+        vm.stopPrank();
+
+        assertEq(solAmount, 20 ether);
+        assertEq(wethAmount, ethToAdd);
+
+        console2.log("Added SOL amount: %18e", solAmount);
+        console2.log("Added WETH amount: %18e", wethAmount);
+        // The amount of LP tokens minted to the to address, representing their share of the pool
+        console2.log("Liquidity tokens minted: %18e", liquidity);
+    }
 }

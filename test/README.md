@@ -137,7 +137,7 @@ function getAmountsIn(address factory, uint amountOut, address[] memory path) in
 
 ## Swap Interface
 
-## SwapTokensForExactTokens function:
+### SwapTokensForExactTokens function:
 
 This function allows us to swap tokens for other tokens. For instance, if we want to swap 4,000 DAI for the maximum possible amount of WETH,
 we'd use swapExactTokensForTokens for this purpose.
@@ -177,7 +177,7 @@ we'd use swapExactTokensForTokens for this purpose.
     }
 ```
 
-## All about Swap Interfaces
+### All about Swap Interfaces
 
 - `swapExactTokensForTokens`: Swaps an exact amount of input ERC20 tokens for as many output ERC20 tokens as possible.
 - `swapTokensForExactTokens`: Swaps a variable amount of input ERC20 tokens (up to a maximum limit) for an exact amount of output ERC20 tokens.
@@ -261,23 +261,9 @@ function swap(uint amount0Out, uint amount1Out, address to, bytes calldata data)
 
 ```
 
-# Create Pair
-
-`createPair` function inside the Uniswap V2 Factory contract, which is responsible for managing the swapping of tokens and adding and removing liquidity.
-
-## How the Create Pair Function Works
-1. Check for Identical Tokens
-2. Sort Tokens. Ensuring that the smaller address is assigned as token0 and the larger as token1 in the Pair contract. 
-3. Check for Existing Pair
-4. Deploy Pair Contract using create2
-5. Initialize Pair Contract 
-6. Store Pair Address. The function updates the `getPair` mapping with the deployed Pair contract address and the associated token0 and token1 addresses
-
-> `create2` function it allows the address of the Pair contract to be calculated directly from the addresses of the tokens that will be traded. This eliminates the need for a separate deployment transaction for each new Pair contract.
-
 # Create Pool
 
-## The Whole Add Liquidity Process
+## The Add Liquidity Process
 
 <img width="518" height="368" alt="Image" src="../img/add_liquidity.png" />
 
@@ -301,3 +287,40 @@ R -> Pair : 5. mint()
 
 @enduml
 ```
+
+## Create Pair
+
+`createPair` function inside the Uniswap V2 Factory contract, which is responsible for managing the swapping of tokens and adding and removing liquidity.
+
+## How the Create Pair Function Works
+
+1. Check for Identical Tokens
+2. Sort Tokens. Ensuring that the smaller address is assigned as token0 and the larger as token1 in the Pair contract.
+3. Check for Existing Pair
+4. Deploy Pair Contract using create2
+5. Initialize Pair Contract
+6. Store Pair Address. The function updates the `getPair` mapping with the deployed Pair contract address and the associated token0 and token1 addresses
+
+> `create2` function it allows the address of the Pair contract to be calculated directly from the addresses of the tokens that will be traded. This eliminates the need for a separate deployment transaction for each new Pair contract.
+
+# Flash Swap
+
+Uniswap V2 supports flash swaps, which allow smart contracts to borrow tokens, execute a trade, and then repay the borrowed tokens all in the same transaction.
+
+```mermaid
+graph LR
+    user["User"] --> flash_swap["Flash Swap"]
+    flash_swap --> pair["Uniswap V2 Pair Contract"]
+    pair --> flash_swap
+    flash_swap --> custom_logic["Custom Logic"]
+    flash_swap --> uniswap_call["uniswapv2Call"]
+    uniswap_call --> pair
+    subgraph "Tokens"
+        WETH["WETH"]
+        DAI["DAI"]
+    end
+```
+
+## What's Flash Swaps used for?
+
+A flash swap allows a user to borrow any amount of tokens from a Uniswap V2 pair with no upfront cost, as long as the borrowed tokens (plus a fee), run any custom logic, such as arbitrage, refinancing, or collateral swapping and then repay the borrowed amount plus the minimal fee in the callback before the transaction ends.
