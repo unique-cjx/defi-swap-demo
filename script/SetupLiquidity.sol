@@ -44,7 +44,7 @@ contract SetupLiquidity is Script {
         ERC20Mock(config.dai).mint(account0, helperConfig.DEPOSITE_DAI_AMOUNT());
         router.addLiquidity(config.weth, config.dai, 100 ether, 400_000 ether, 0, 0, account0, block.timestamp);
 
-        // Add liquidity for WBTC/WETH pair (1 WBTC ≈ 25 WETH)
+        // Add liquidity for WBTC/WETH pair (1 WBTC ≈ 25 WETH) 100_000 DAI
         ERC20Mock(config.wbtc).mint(account0, helperConfig.DEPOSITE_WBTC_AMOUNT());
 
         router.addLiquidity(config.wbtc, config.weth, 10 ether, 250 ether, 0, 0, account0, block.timestamp);

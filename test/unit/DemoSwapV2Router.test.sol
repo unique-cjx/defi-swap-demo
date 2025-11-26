@@ -3,7 +3,6 @@
 pragma solidity 0.8.24;
 
 import { Test, console2 } from "forge-std/Test.sol";
-import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import { IWETH } from "../../src/interfaces/IWETH.sol";
 import { IERC20 } from "../../src/interfaces/IERC20.sol";
@@ -19,19 +18,25 @@ contract DemoSwapV2RouterTest is Test, BaseDemoSwapV2Test {
         _setUp();
     }
 
-    // Liquidity you added in SetupLiquidity:
-    // 1. WETH/DAI pair: reserves = 1 WETH and 4000 DAI
-    // 2. MKR/DAI pair: reserves = 1 MKR and 1000 DAI
-    // 3. Uniswap V2 uses the constant-product formula with a 0.3% fee per swap. For a swap of amountIn the amountOut
-    // formula is: amountOut = (amountIn * reserveOut * 997) / (reserveIn * 1000 + amountIn * 997)
+    // Liquidity added in SetupLiquidity:
+    // 1. WETH/DAI pair: reserves = 100 WETH and 400,000 DAI
+    // 2. MKR/DAI pair: reserves = 50 MKR and 50,000 DAI
     //
-    // So compute the hopes:
-    // WETH -> DAI (reserveIn = 1 WETH, reserveOut = 4000 DAI, amountIn = 1)
-    // amountOut_DAI ≈ (1 * 4000 * 997) / (1 * 1000 + 997) ≈ 1996.995493239859789684
+    // Uniswap V2 constant-product formula with 0.3% fee:
+    // amountOut = (amountIn * reserveOut * 997) / (reserveIn * 1000 + amountIn * 997)
     //
-    // DAI -> MKR (reserveIn = 1000 DAI, reserveOut = 1 MKR, amountIn ≈ 1996.995)
-    // amountOut_MKR ≈ (1 * 1996.995 * 997) / (1000 * 1000 + 1996.995 * 997) ≈ 0.6656641064
+    // Step 1: WETH -> DAI
+    // reserveIn = 100 WETH, reserveOut = 400,000 DAI, amountIn = 1 WETH
+    // amountOut_DAI = (1 * 400,000 * 997) / (100 * 1000 + 1 * 997)
+    //               = 398,800,000 / 100,997
+    //               ≈ 3948.632137588245195401 DAI
     //
+    // Step 2: DAI -> MKR
+    // reserveIn = 50,000 DAI, reserveOut = 50 MKR, amountIn ≈ 3948.632 DAI
+    // amountOut_MKR = (3948.632... * 50 * 997) / (50,000 * 1000 + 3948.632... * 997)
+    //               ≈ 196,839,312 / (50,000,000 + 3,936,786)
+    //               ≈ 196,839,312 / 53,936,786
+    //               ≈ 3.64944457718740367 MKR
     function test_getAmountsOut() public view {
         address[] memory path = new address[](3);
         path[0] = WETH;
@@ -41,21 +46,31 @@ contract DemoSwapV2RouterTest is Test, BaseDemoSwapV2Test {
         uint256 amountIn = 1 ether; // representing 1 WETH
         uint256[] memory amounts = router.getAmountsOut(amountIn, path);
 
-        console2.log("-----AMOUNT_OUT-----");
         console2.log("WETH %18e", amounts[0]);
         console2.log("DAI %18e", amounts[1]);
         console2.log("MKR %18e", amounts[2]);
     }
 
-    // MKR/DAI reserves: 1 MKR, 1000 DAI.
-    // Uniswap amountsIn formula (simplified): amountIn ≈ (reserveIn * amountOut * 1000) / ((reserveOut - amountOut) *
-    // 997)
-    // For amountOut = 0.01 MKR:
-    // amountIn_DAI ≈ (1000 * 0.01 * 1000) / ((1 - 0.01) * 997) ≈ 10.131404313951956881 DAI
+    // Liquidity added in SetupLiquidity:
+    // 1. WETH/DAI pair: reserves = 100 WETH and 400,000 DAI
+    // 2. MKR/DAI pair: reserves = 50 MKR and 50,000 DAI
     //
-    // WETH/DAI reserves: 1 WETH, 4000 DAI.
-    // To get about 10.1314 DAI:
-    // amountIn_WETH ≈ (1 * 10.1314 * 1000) / ((4000 - 10.1314) * 997) ≈ 0.002546923473843468 WETH
+    // Uniswap amountsIn formula: amountIn = (reserveIn * amountOut * 1000) / ((reserveOut - amountOut) * 997) + 1
+    //
+    // Step 1: DAI -> MKR (Last hop)
+    // We want output = 1 MKR
+    // reserveIn = 50,000 DAI, reserveOut = 50 MKR
+    // amountIn_DAI = (50,000 * 1 * 1000) / ((50 - 1) * 997) + 1
+    //              = 50,000,000 / 48,853 + 1
+    //              ≈ 1023.478599062493603259 DAI
+    //
+    // Step 2: WETH -> DAI (First hop)
+    // We want output = 1023.478599... DAI
+    // reserveIn = 100 WETH, reserveOut = 400,000 DAI
+    // amountIn_WETH = (100 * 1023.478599... * 1000) / ((400,000 - 1023.478599...) * 997) + 1
+    //               = 102,347,859.9... / (398,976.521... * 997) + 1
+    //               = 102,347,859.9... / 397,779,591.8... + 1
+    //               ≈ 0.257297915746912384 WETH
     function test_getAmountsIn() public view {
         address[] memory path = new address[](3);
         path[0] = WETH;
@@ -65,7 +80,6 @@ contract DemoSwapV2RouterTest is Test, BaseDemoSwapV2Test {
         uint256 amountOut = 1e18;
         uint256[] memory amounts = router.getAmountsIn(amountOut, path);
 
-        console2.log("-----AMOUNT_IN-----");
         console2.log("WETH %18e", amounts[0]);
         console2.log("DAI %18e", amounts[1]);
         console2.log("MKR %18e", amounts[2]);
@@ -119,5 +133,95 @@ contract DemoSwapV2RouterTest is Test, BaseDemoSwapV2Test {
         console2.log("Added WETH amount: %18e", wethAmount);
         // The amount of LP tokens minted to the to address, representing their share of the pool
         console2.log("Liquidity tokens minted: %18e", liquidity);
+    }
+
+    function test_SwapExactTokensForTokens() public {
+        address[] memory path = new address[](3);
+        path[0] = MKR;
+        path[1] = DAI;
+        path[2] = WETH;
+
+        uint256 MKRAmountIn = 5e18;
+        uint256 WETHAmountOutMin = 1e18; // Minimum amount of WETH to receive
+
+        vm.prank(testUser);
+        // amountIn: This is the amount of tokens the user will be sending in
+        // amountOutMin: This is the minimum amount of output tokens the user expects
+        // path: This is an array of addresses which define the token path for the swap
+        uint256[] memory amounts =
+            router.swapExactTokensForTokens(MKRAmountIn, WETHAmountOutMin, path, testUser, block.timestamp);
+        console2.log("MKR: %18e", amounts[0]);
+        console2.log("DAI: %18e", amounts[1]);
+        console2.log("WETH: %18e", amounts[2]);
+
+        uint256 swappedWETHBalance = _getBalance(WETH);
+        uint256 swappedMKRBalance = _getBalance(MKR);
+        console2.log("swapped WETH balance: %18e", swappedWETHBalance);
+        console2.log("swapped MKR balance: %18e", swappedMKRBalance);
+        assertGe(swappedWETHBalance, WETHBalance + WETHAmountOutMin);
+    }
+
+    function test_SwapTokensForExactTokens() public {
+        address[] memory path = new address[](3);
+        path[0] = WETH;
+        path[1] = DAI;
+        path[2] = MKR;
+
+        uint256 MKRAmountOut = 1e18;
+        uint256 WETHAmountInMax = 0.3e18; // What is the maximum WETH the user is willing to spend buy the amount of MKR
+
+        vm.prank(testUser);
+        uint256[] memory amounts =
+            router.swapTokensForExactTokens(MKRAmountOut, WETHAmountInMax, path, testUser, block.timestamp);
+        console2.log("WETH: %18e", amounts[0]);
+        console2.log("DAI: %18e", amounts[1]);
+        console2.log("MKR: %18e", amounts[2]);
+
+        uint256 swappedMKRBalance = _getBalance(MKR);
+        uint256 swappedWETHBalance = _getBalance(WETH);
+        console2.log("swapped MKR balance: %18e", swappedMKRBalance);
+        console2.log("swapped WETH balance: %18e", swappedWETHBalance);
+        assertEq(swappedMKRBalance, MKRAmountOut + MKRBalance);
+    }
+
+    function test_SwapTokensForExactETH() public {
+        address[] memory path = new address[](3);
+        path[0] = MKR;
+        path[1] = DAI;
+        path[2] = WETH;
+
+        uint256 WETHAmountOut = 1e17; // 0.1 WETH
+        uint256 MKRAmountInMax = 1e18; // What is the maximum MKR the user is willing to spend buy 0.1 WETH
+
+        vm.prank(testUser);
+        // Calculation explanation:
+        //
+        // 1) Uniswap router computes required input amounts backwards through the path.
+        //    Formula: amountIn = (reserveIn * amountOut * 1000) / ((reserveOut - amountOut) * 997) + 1
+        //
+        // 2) Last hop (DAI -> WETH):
+        //    - Liquidity deep: reserveIn = 400,000 DAI, reserveOut = 100 WETH
+        //    - amountOut = 0.1 WETH
+        //    - amountIn_DAI = (400,000 * 0.1 * 1000) / ((100 - 0.1) * 997)
+        //                   ≈ 40,000,000 / 99,600.3 ≈ 401 DAI
+        //
+        // 3) First hop (MKR -> DAI):
+        //    - Liquidity deep: reserveIn = 50 MKR, reserveOut = 50,000 DAI
+        //    - amountOut = 401 DAI (from step 2)
+        //    - amountIn_MKR = (50 * 401 * 1000) / ((50,000 - 401) * 997)
+        //                   ≈ 20,050,000 / 49,450,203 ≈ 0.40 MKR
+        //
+        // 4) Summary (Expected values):
+        //    - amounts[0] (MKR In)  ≈ 0.40e18
+        //    - amounts[1] (DAI In)  ≈ 401e18
+        //    - amounts[2] (WETH Out) = 0.1e18
+        uint256[] memory amounts =
+            router.swapTokensForExactETH(WETHAmountOut, MKRAmountInMax, path, testUser, block.timestamp);
+        console2.log("MKR: %18e", amounts[0]);
+        console2.log("DAI: %18e", amounts[1]);
+        console2.log("WETH: %18e", amounts[2]);
+
+        console2.log("user's the leatest ETH balance: %18e", testUser.balance);
+        assertEq(testUser.balance, amounts[2] + WETHBalance);
     }
 }
