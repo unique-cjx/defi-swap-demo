@@ -324,3 +324,30 @@ graph LR
 ## What's Flash Swaps used for?
 
 A flash swap allows a user to borrow any amount of tokens from a Uniswap V2 pair with no upfront cost, as long as the borrowed tokens (plus a fee), run any custom logic, such as arbitrage, refinancing, or collateral swapping and then repay the borrowed amount plus the minimal fee in the callback before the transaction ends.
+
+# Twap
+
+TWAP is a mechanism used to calculate the average price of a token over a certain period. It's used to help mitigate price manipulation by preventing large, sudden trades from impacting the price too significantly.
+
+We can't directly fetch the USD price of ETH in Solidity. Instead, we need a price oracle, a special smart contract that provides the price of a token.
+
+## Oracle Manipulation Attack
+
+### 1. The Pump (Manipulate Price)
+
+The hacker went to a DEX and dumped a massive amount of **10,000,000** DAI to buy **832**WETH. Because this trade was so huge, it drained the pool of WETH, causing the automated price of WETH to rise significantly about **71,819** DAI per WETH.
+
+### 2. The Borrow (Steal Funds)
+
+Next, the hacker would deposit **100** WETH as collateral.
+
+- Protocol's view: "Wow! WETH is worth **71,819** DAI each, so your 100 WETH is worth **7.1 Million** DAI! You can borrow a lot."
+- The hacker borrowed **5,745,599** DAI.
+
+### 3. The Dump (Reset Price)
+
+The hacker went back to the DEX and sold the **832** WETH back. This pushed the price of WETH back down to around **2,000** DAI per WETH.
+
+### 4. The Profit
+
+Finally, the hacker now has the **5.7 Million** DAI they borrowed. They return the **100** WETH collateral (now worth only **200,000** DAI) to the protocol and keep the remaining **5.5 Million** DAI as profit.

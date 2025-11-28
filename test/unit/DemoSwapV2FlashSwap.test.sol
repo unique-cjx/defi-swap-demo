@@ -4,13 +4,12 @@ pragma solidity 0.8.24;
 import { Test, console2 } from "forge-std/Test.sol";
 
 import { IERC20 } from "../../src/interfaces/IERC20.sol";
-import { IUniswapV2Router02 } from "../../src/interfaces/uniswap-v2/IUniswapV2Router02.sol";
 import { IUniswapV2Factory } from "../../src/interfaces/uniswap-v2/IUniswapV2Factory.sol";
-import { UniswapV2FlashSwap } from "../../src/UniswapV2FlashSwap.sol";
+import { DemoSwapV2FlashSwap } from "../../src/DemoSwapV2FlashSwap.sol";
 import { BaseDemoSwapV2Test } from "./BaseDemoSwapV2Test.sol";
 
-contract UniswapV2FlashSwapTest is Test, BaseDemoSwapV2Test {
-    UniswapV2FlashSwap public flashSwap;
+contract DemoSwapV2FlashSwapTest is Test, BaseDemoSwapV2Test {
+    DemoSwapV2FlashSwap public flashSwap;
     IUniswapV2Factory public factory;
     address pairAddress;
 
@@ -22,7 +21,7 @@ contract UniswapV2FlashSwapTest is Test, BaseDemoSwapV2Test {
         _setUp();
         factory = IUniswapV2Factory(router.factory());
         pairAddress = factory.getPair(DAI, WETH);
-        flashSwap = new UniswapV2FlashSwap(pairAddress);
+        flashSwap = new DemoSwapV2FlashSwap(pairAddress);
     }
 
     function test_flashSwapRevertsWithoutCallerData() public {
@@ -35,7 +34,7 @@ contract UniswapV2FlashSwapTest is Test, BaseDemoSwapV2Test {
     function test_flashSwapRevertsWithInvalidToken() public {
         address invalidToken = MKR; // MKR is not part of the DAI-WETH pair
         vm.prank(testUser);
-        vm.expectRevert(UniswapV2FlashSwap.UniswapV2FlashSwap_InvalidToken.selector);
+        vm.expectRevert(DemoSwapV2FlashSwap.DemoSwapV2FlashSwap_InvalidToken.selector);
         flashSwap.flashSwap(invalidToken, BORROW_AMOUNT);
         vm.stopPrank();
     }
@@ -47,7 +46,7 @@ contract UniswapV2FlashSwapTest is Test, BaseDemoSwapV2Test {
         vm.startPrank(testUser);
         IERC20(DAI).approve(address(flashSwap), amountToRepay);
         flashSwap.flashSwap(DAI, BORROW_AMOUNT);
-        uint256 daiBalanceAfter = IERC20(DAI).balanceOf(testUser);
+        uint256 daiBalanceAfter = _getBalance(DAI);
         vm.stopPrank();
         assertEq(daiBalanceAfter, DAIBalance - amountToRepay);
         console2.log("After flash swap, user DAI balance is: %18e", daiBalanceAfter);
@@ -66,7 +65,7 @@ contract UniswapV2FlashSwapTest is Test, BaseDemoSwapV2Test {
         deal(DAI, pairAddress, pairBalanceBefore - borrowAmount);
         deal(DAI, testUser, amountToRepay);
         console2.log("2.after deal, pair DAI balance: %18e", IERC20(DAI).balanceOf(pairAddress));
-        console2.log("3.after deal, user DAI balance: %18e", IERC20(DAI).balanceOf(testUser));
+        console2.log("3.after deal, user DAI balance: %18e", _getBalance(DAI));
 
         vm.prank(testUser);
         IERC20(DAI).approve(address(flashSwap), amountToRepay);
@@ -77,7 +76,7 @@ contract UniswapV2FlashSwapTest is Test, BaseDemoSwapV2Test {
         uint256 pairBalanceAfter = IERC20(DAI).balanceOf(pairAddress);
         assertEq(pairBalanceAfter, pairBalanceBefore - borrowAmount + amountToRepay);
 
-        uint256 userBalanceAfter = IERC20(DAI).balanceOf(testUser);
+        uint256 userBalanceAfter = _getBalance(DAI);
         assertEq(userBalanceAfter, 0);
     }
 }

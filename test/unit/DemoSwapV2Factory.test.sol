@@ -9,7 +9,6 @@ import { IUniswapV2Factory } from "../../src/interfaces/uniswap-v2/IUniswapV2Fac
 import { IUniswapV2Pair } from "../../src/interfaces/uniswap-v2/IUniswapV2Pair.sol";
 import { SetupLiquidity } from "../../script/SetupLiquidity.sol";
 import { HelperConfig } from "../../script/HelperConfig.sol";
-import { IWETH } from "../../src/interfaces/IWETH.sol";
 import { ERC20Mock } from "../../test/mocks/ERC20Mock.sol";
 
 contract DemoSwapV2FactoryTest is Test {

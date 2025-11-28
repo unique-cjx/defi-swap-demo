@@ -4,8 +4,8 @@ pragma solidity ^0.8.20;
 import { IUniswapV2Pair } from "./interfaces/uniswap-v2/IUniswapV2Pair.sol";
 import { IERC20 } from "./interfaces/IERC20.sol";
 
-contract UniswapV2FlashSwap {
-    error UniswapV2FlashSwap_InvalidToken();
+contract DemoSwapV2FlashSwap {
+    error DemoSwapV2FlashSwap_InvalidToken();
 
     IUniswapV2Pair private immutable pair;
     address private immutable token0;
@@ -21,7 +21,7 @@ contract UniswapV2FlashSwap {
     /// @param token The address of the token to borrow.
     /// @param amount The amount of the token to borrow.
     function flashSwap(address token, uint256 amount) external {
-        if (token != token0 && token != token1) revert UniswapV2FlashSwap_InvalidToken();
+        if (token != token0 && token != token1) revert DemoSwapV2FlashSwap_InvalidToken();
 
         // Determine which token to borrow
         uint256 amount0Out = token == token0 ? amount : 0;
