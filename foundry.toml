@@ -22,3 +22,7 @@ number_underscore = "thousands"
 quote_style = "double"
 tab_width = 4
 wrap_comments = true
+
+[lint]
+# ... rest of lint config ...
+exclude_lints = ["unused-import"]

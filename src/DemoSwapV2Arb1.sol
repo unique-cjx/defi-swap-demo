@@ -7,6 +7,10 @@ import { IUniswapV2Pair } from "./interfaces/uniswap-v2/IUniswapV2Pair.sol";
 import { IUniswapV2Router02 } from "./interfaces/uniswap-v2/IUniswapV2Router02.sol";
 
 contract DemoSwapV2Arb1 {
+    error DemoSwapV2Arb1_InsufficientProfit();
+    error DemoSwapV2Arb1_RepayFailed();
+    error DemoSwapV2Arb1_InvalidCaller();
+
     struct SwapParams {
         // Router to execute first swap - tokenIn for tokenOut
         address router0;
@@ -33,17 +37,13 @@ contract DemoSwapV2Arb1 {
 
         // 2. Executing the first swap on router0.
         IERC20(params.tokenIn).approve(params.router0, params.amountIn);
-        
+
         address[] memory path = new address[](2);
         path[0] = params.tokenIn;
         path[1] = params.tokenOut;
 
         uint256[] memory amounts = IUniswapV2Router02(params.router0).swapExactTokensForTokens(
-            params.amountIn,
-            0, 
-            path,
-            address(this),
-            block.timestamp
+            params.amountIn, 0, path, address(this), block.timestamp
         );
 
         // 3. Executing the second swap on router1.
@@ -54,17 +54,15 @@ contract DemoSwapV2Arb1 {
         path[1] = params.tokenIn;
 
         amounts = IUniswapV2Router02(params.router1).swapExactTokensForTokens(
-            amountOut,
-            0, 
-            path,
-            address(this),
-            block.timestamp
+            amountOut, 0, path, address(this), block.timestamp
         );
 
         // 4. Sending the remaining tokens (including profit) back to the message sender.
         uint256 amountBack = amounts[1];
-        require(amountBack >= params.amountIn + params.minProfit, "Insufficient profit");
-        
+        if (amountBack < params.amountIn + params.minProfit) {
+            revert DemoSwapV2Arb1_InsufficientProfit();
+        }
+
         IERC20(params.tokenIn).transfer(msg.sender, amountBack);
     }
 
@@ -94,24 +92,24 @@ contract DemoSwapV2Arb1 {
 
     function uniswapV2Call(address sender, uint256 amount0Out, uint256 amount1Out, bytes calldata data) external {
         // Ensure sender is this contract (initiator of the swap on the pair)
-        require(sender == address(this), "Sender must be this contract");
+        // msg.sender is the Pair contract.
+        // sender is the address passed to the swap function (the initiator).
+        if (sender != address(this)) {
+            revert DemoSwapV2Arb1_InvalidCaller();
+        }
 
         (address caller, SwapParams memory params) = abi.decode(data, (address, SwapParams));
 
         // 1. Execute arbitrage logic
         // Swap 1: tokenIn -> tokenOut on router0
         IERC20(params.tokenIn).approve(params.router0, params.amountIn);
-        
+
         address[] memory path = new address[](2);
         path[0] = params.tokenIn;
         path[1] = params.tokenOut;
 
         uint256[] memory amounts = IUniswapV2Router02(params.router0).swapExactTokensForTokens(
-            params.amountIn,
-            0,
-            path,
-            address(this),
-            block.timestamp
+            params.amountIn, 0, path, address(this), block.timestamp
         );
 
         // Swap 2: tokenOut -> tokenIn on router1
@@ -122,11 +120,7 @@ contract DemoSwapV2Arb1 {
         path[1] = params.tokenIn;
 
         amounts = IUniswapV2Router02(params.router1).swapExactTokensForTokens(
-            amountOut,
-            0,
-            path,
-            address(this),
-            block.timestamp
+            amountOut, 0, path, address(this), block.timestamp
         );
 
         uint256 amountBack = amounts[1];
@@ -137,14 +131,18 @@ contract DemoSwapV2Arb1 {
         uint256 fee = (amountBorrowed * 3) / 997 + 1;
         uint256 amountToRepay = amountBorrowed + fee;
 
-        require(amountBack >= amountToRepay, "Insufficient funds to repay");
+        if (amountBack < amountToRepay) {
+            revert DemoSwapV2Arb1_RepayFailed();
+        }
 
         // 3. Repay pair
         IERC20(params.tokenIn).transfer(msg.sender, amountToRepay);
 
         // 4. Send profit to caller
         uint256 profit = amountBack - amountToRepay;
-        require(profit >= params.minProfit, "Insufficient profit");
+        if (profit < params.minProfit) {
+            revert DemoSwapV2Arb1_InsufficientProfit();
+        }
 
         if (profit > 0) {
             IERC20(params.tokenIn).transfer(caller, profit);
