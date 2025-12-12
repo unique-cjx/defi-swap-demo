@@ -351,3 +351,19 @@ The hacker went back to the DEX and sold the **832** WETH back. This pushed the 
 ### 4. The Profit
 
 Finally, the hacker now has the **5.7 Million** DAI they borrowed. They return the **100** WETH collateral (now worth only **200,000** DAI) to the protocol and keep the remaining **5.5 Million** DAI as profit.
+
+# Arbitarage
+
+Arbitrage is the process of taking advantage of price differences between two exchanges. Essentially, you buy the asset on the exchange with the lower price and sell it on the exchange with the higher price.
+
+```mermaid
+graph LR
+A[Uniswap V2] --> B[User]
+B[User] --> C[SushiSwap]
+D[DAI/MKR] --> B[User]
+A[Uniswap V2] -- 3900 DAI / WETH --> B[User]
+B[User] -- 4000 DAI / WETH --> C[SushiSwap]
+D[DAI/MKR] -- DAI / MKR --> B[User]
+```
+
+profit = (Sell Price - Buy Price) * Quantity - Fees - Slippage

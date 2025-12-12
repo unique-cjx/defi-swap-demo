@@ -7,6 +7,8 @@ import { IERC20 } from "./interfaces/IERC20.sol";
 
 contract DemoSwapV2FlashSwap {
     error DemoSwapV2FlashSwap_InvalidToken();
+    error DemoSwapV2FlashSwap_InvalidCaller();
+    error DemoSwapV2FlashSwap_InvalidInitiator();
 
     IUniswapV2Pair private immutable pair;
     address private immutable token0;
@@ -42,10 +44,10 @@ contract DemoSwapV2FlashSwap {
     /// @param data Encoded data containing the borrowed token and original caller.
     function uniswapV2Call(address sender, uint256 amount0, uint256 amount1, bytes calldata data) external {
         // 1. Require msg.sender is pair contract
-        if (msg.sender != address(pair)) revert();
+        if (msg.sender != address(pair)) revert DemoSwapV2FlashSwap_InvalidCaller();
 
         // 2. Require sender is this contract
-        if (sender != address(this)) revert();
+        if (sender != address(this)) revert DemoSwapV2FlashSwap_InvalidInitiator();
 
         // 3. Decode token and caller from data
         (address token, address caller) = abi.decode(data, (address, address));
@@ -54,7 +56,8 @@ contract DemoSwapV2FlashSwap {
         uint256 amount = amount0 > 0 ? amount0 : amount1;
 
         // 5. Calculate flash swap fee and amount to repay
-        // fee = borrowed amount * 3 / 997 + 1 to round up
+        //  - Uniswap V2 fee is 0.3%. The formula ensures we pay back enough to satisfy k constant.
+        //  - Why does the result add 1, it's purpose to round up.
         uint256 fee = (amount * 3) / 997 + 1;
         uint256 amountToRepay = amount + fee;
 

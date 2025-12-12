@@ -144,4 +144,42 @@ contract DemoSwapV2PairTest is Test, BaseDemoSwapV2Test {
         console2.log("Pre sync Reserves - WETH: %18e", wethReservePre);
         console2.log("Post sync Reserves - WETH: %18e", wethReservePost);
     }
+
+    function test_Swap() public {
+        vm.startPrank(testUser);
+
+        // Determine token order
+        address token0 = pair.token0();
+        bool isWETHZero = token0 == WETH;
+
+        uint256 amountIn = 1 ether; // WETH
+
+        // 1. Transfer input tokens to pair (Optimistic transfer)
+        IERC20(WETH).transfer(address(pair), amountIn);
+
+        // 2. Calculate expected output
+        (uint112 reserve0, uint112 reserve1,) = pair.getReserves();
+        uint256 reserveIn = isWETHZero ? reserve0 : reserve1;
+        uint256 reserveOut = isWETHZero ? reserve1 : reserve0;
+
+        // amountOut = (amountIn * 997 * reserveOut) / (reserveIn * 1000 + amountIn * 997)
+        uint256 amountInWithFee = amountIn * 997;
+        uint256 numerator = amountInWithFee * reserveOut;
+        uint256 denominator = (reserveIn * 1000) + amountInWithFee;
+        uint256 amountOut = numerator / denominator;
+
+        uint256 amount0Out = isWETHZero ? 0 : amountOut;
+        uint256 amount1Out = isWETHZero ? amountOut : 0;
+
+        uint256 preBalanceDAI = IERC20(DAI).balanceOf(testUser);
+
+        // 3. Call swap
+        pair.swap(amount0Out, amount1Out, testUser, "");
+
+        vm.stopPrank();
+
+        uint256 postBalanceDAI = IERC20(DAI).balanceOf(testUser);
+        console2.log("Swapped 1 WETH for DAI: %18e", amountOut);
+        assertEq(postBalanceDAI - preBalanceDAI, amountOut);
+    }
 }

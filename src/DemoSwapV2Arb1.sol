@@ -100,24 +100,38 @@ contract DemoSwapV2Arb1 {
 
         (address caller, SwapParams memory params) = abi.decode(data, (address, SwapParams));
 
-        // 1. Execute arbitrage logic
-        // Swap 1: tokenIn -> tokenOut on router0
+        // tokenIn: 50,000 DAI
         IERC20(params.tokenIn).approve(params.router0, params.amountIn);
 
         address[] memory path = new address[](2);
         path[0] = params.tokenIn;
         path[1] = params.tokenOut;
 
+        // Swap 1: tokenIn(DAI) -> tokenOut(WETH) on Mock Router  ~12.82 WETH
         uint256[] memory amounts = IUniswapV2Router02(params.router0).swapExactTokensForTokens(
             params.amountIn, 0, path, address(this), block.timestamp
         );
 
-        // Swap 2: tokenOut -> tokenIn on router1
         uint256 amountOut = amounts[1];
         IERC20(params.tokenOut).approve(params.router1, amountOut);
 
         path[0] = params.tokenOut;
         path[1] = params.tokenIn;
+
+        // Swap 2: tokenOut(WETH) -> tokenIn(DAI) on Real Router
+        //
+        // WETH/DAI pair: reserves = 1100 WETH : 4,400,000 DAI
+        //
+        // amountIn: 12.82 WETH
+        // amountOut calculation with Uniswap formula:
+        // amountOut = (amountIn * reserveOut * 997) / (reserveIn * 1000 + amountIn * 997)
+        //           = (12.82 * 4,400,000 * 997) / (1100 * 1000 + 12.82 * 997)
+        //           = 56,238,776,000 / 1,112,781.54
+        //           = ~50,540 DAI
+        //
+        // Slippage: ~1.1% (due to 12.78 WETH trade size relative to 1100 WETH pool)
+        // amountBack: ~50,540 DAI
+        // per WETH = ~3948 DAI
 
         amounts = IUniswapV2Router02(params.router1).swapExactTokensForTokens(
             amountOut, 0, path, address(this), block.timestamp
@@ -125,20 +139,20 @@ contract DemoSwapV2Arb1 {
 
         uint256 amountBack = amounts[1];
 
-        // 2. Calculate repayment
-        uint256 amountBorrowed = amount0Out > 0 ? amount0Out : amount1Out;
-        // Fee is 0.3% => amount * 3 / 997 + 1
+        // 3. Calculate repayment
+        uint256 amountBorrowed = amount0Out > 0 ? amount0Out : amount1Out; // 50,000 DAI
+        // Fee is 0.3% => amount * 3 / 997 + 1 = 151 DAI
         uint256 fee = (amountBorrowed * 3) / 997 + 1;
-        uint256 amountToRepay = amountBorrowed + fee;
+        uint256 amountToRepay = amountBorrowed + fee; // 50,151 DAI
 
         if (amountBack < amountToRepay) {
             revert DemoSwapV2Arb1_RepayFailed();
         }
 
-        // 3. Repay pair
+        // 4. Repay borrowed DAI to pair contract
         IERC20(params.tokenIn).transfer(msg.sender, amountToRepay);
 
-        // 4. Send profit to caller
+        // 5. Send profit to caller. Profit: ~390 DAI
         uint256 profit = amountBack - amountToRepay;
         if (profit < params.minProfit) {
             revert DemoSwapV2Arb1_InsufficientProfit();
