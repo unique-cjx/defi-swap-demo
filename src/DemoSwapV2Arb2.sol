@@ -2,11 +2,18 @@
 
 pragma solidity 0.8.24;
 
+import { console2 } from "forge-std/Test.sol";
 import { IERC20 } from "./interfaces/IERC20.sol";
 import { IUniswapV2Pair } from "./interfaces/uniswap-v2/IUniswapV2Pair.sol";
 import { IUniswapV2Router02 } from "./interfaces/uniswap-v2/IUniswapV2Router02.sol";
 
 contract DemoSwapV2Arb2 {
+    error DemoSwapV2Arb2_InsufficientProfit();
+    error DemoSwapV2Arb2_InvalidSender();
+    error DemoSwapV2Arb2_RepayFailed();
+    error DemoSwapV2Arb2_InvalidCaller();
+    error DemoSwapV2Arb2_InvalidBorrowedAmount(uint256 expected, uint256 actual);
+
     struct FlashSwapData {
         // Caller of flashSwap (msg.sender inside flashSwap)
         address caller;
@@ -24,15 +31,12 @@ contract DemoSwapV2Arb2 {
         uint256 minProfit;
     }
 
-    // Exercise 1
-    // - Flash swap to borrow tokenOut
-    /**
-     * @param pair0 Pair contract to flash swap
-     * @param pair1 Pair contract to swap
-     * @param isZeroForOne True if flash swap is token0 in and token1 out
-     * @param amountIn Amount in to repay flash swap
-     * @param minProfit Minimum profit that this arbitrage must make
-     */
+    /// @notice Flash swap from `pair0`, then swap on `pair1` to repay and keep profit.
+    /// @param pair0 Pair contract to flash swap from.
+    /// @param pair1 Pair contract to swap on (must contain the borrowed/repay tokens).
+    /// @param isZeroForOne True to repay token0 and borrow token1 from `pair0`.
+    /// @param amountIn Amount of repay token to return to `pair0`.
+    /// @param minProfit Minimum required profit (in repay token).
     function flashSwap(address pair0, address pair1, bool isZeroForOne, uint256 amountIn, uint256 minProfit) external {
         IUniswapV2Pair p0 = IUniswapV2Pair(pair0);
         (uint112 reserve0, uint112 reserve1,) = p0.getReserves();
@@ -64,11 +68,16 @@ contract DemoSwapV2Arb2 {
         p0.swap(amount0Out, amount1Out, address(this), data);
     }
 
+    /// @notice UniswapV2 flash swap callback.
+    /// @param sender Must be this contract.
+    /// @param amount0Out Amount of token0 that was borrowed.
+    /// @param amount1Out Amount of token1 that was borrowed.
+    /// @param data ABI-encoded FlashSwapData.
     function uniswapV2Call(address sender, uint256 amount0Out, uint256 amount1Out, bytes calldata data) external {
         FlashSwapData memory fsData = abi.decode(data, (FlashSwapData));
 
-        if (msg.sender != fsData.pair0) revert();
-        if (sender != address(this)) revert();
+        if (msg.sender != fsData.pair0) revert DemoSwapV2Arb2_InvalidCaller();
+        if (sender != address(this)) revert DemoSwapV2Arb2_InvalidSender();
 
         IUniswapV2Pair p0 = IUniswapV2Pair(fsData.pair0);
 
@@ -76,7 +85,7 @@ contract DemoSwapV2Arb2 {
         address tokenRepay = fsData.isZeroForOne ? p0.token0() : p0.token1();
 
         uint256 borrowed = fsData.isZeroForOne ? amount1Out : amount0Out;
-        if (borrowed != fsData.amountOut) revert();
+        if (borrowed != fsData.amountOut) revert DemoSwapV2Arb2_InvalidBorrowedAmount(fsData.amountOut, borrowed);
 
         // Swap borrowed token on pair1 to get repay token
         IUniswapV2Pair p1 = IUniswapV2Pair(fsData.pair1);
@@ -93,16 +102,22 @@ contract DemoSwapV2Arb2 {
         } else if (tokenBorrowed == p1Token1 && tokenRepay == p1Token0) {
             // token1 in -> token0 out
             repayOut = getAmountOut(borrowed, uint256(p1Reserve1), uint256(p1Reserve0));
+
             IERC20(p1Token1).transfer(fsData.pair1, borrowed);
             p1.swap(repayOut, 0, address(this), new bytes(0));
         } else {
-            revert();
+            revert DemoSwapV2Arb2_RepayFailed();
         }
 
         // Check profit and repay
         uint256 minOut = fsData.amountIn + fsData.minProfit;
-        if (repayOut < minOut) revert();
+        console2.log("-------------- FLASH SWAP PROGRESS --------------");
+        console2.log("1. swap borrowed %18e WETH from pair0 through %18e DAI", fsData.amountOut, fsData.amountIn);
+        console2.log("2. swap borrowed %18e DAI from pair1 through %18e WETH", repayOut, borrowed);
+        console2.log("3. finally profit: %18e DAI", repayOut - fsData.amountIn);
+        console2.log("-------------------- END --------------------");
 
+        if (repayOut < minOut) revert DemoSwapV2Arb2_InsufficientProfit();
         IERC20(tokenRepay).transfer(fsData.pair0, fsData.amountIn);
         IERC20(tokenRepay).transfer(fsData.caller, repayOut - fsData.amountIn);
     }

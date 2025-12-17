@@ -40,6 +40,7 @@ contract DemoSwapV2Arb1Test is Test, BaseDemoSwapV2Test {
         // 2. Fund Mock Router with tokens so it can pay out swaps
         deal(DAI, address(mockRouter), 1_000_000 ether);
         deal(WETH, address(mockRouter), 1000 ether);
+
         // 3. Configure Price on Mock Router
         // Real Router Price (approx): 1 WETH = 4000 DAI (based on SetupLiquidity defaults)
         // We set Mock Router Price:   1 WETH = 3900 DAI (Higher price for WETH)

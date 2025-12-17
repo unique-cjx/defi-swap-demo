@@ -145,7 +145,7 @@ contract DemoSwapV2PairTest is Test, BaseDemoSwapV2Test {
         console2.log("Post sync Reserves - WETH: %18e", wethReservePost);
     }
 
-    function test_Swap() public {
+    function test_BasicSwap() public {
         vm.startPrank(testUser);
 
         // Determine token order
@@ -162,6 +162,14 @@ contract DemoSwapV2PairTest is Test, BaseDemoSwapV2Test {
         uint256 reserveIn = isWETHZero ? reserve0 : reserve1;
         uint256 reserveOut = isWETHZero ? reserve1 : reserve0;
 
+        if (isWETHZero) {
+            console2.log("Reserves before swap - WETH: %18e", reserve0);
+            console2.log("Reserves before swap - DAI: %18e", reserve1);
+        } else {
+            console2.log("Reserves before swap - WETH: %18e", reserve1);
+            console2.log("Reserves before swap - DAI: %18e", reserve0);
+        }
+
         // amountOut = (amountIn * 997 * reserveOut) / (reserveIn * 1000 + amountIn * 997)
         uint256 amountInWithFee = amountIn * 997;
         uint256 numerator = amountInWithFee * reserveOut;
@@ -170,6 +178,7 @@ contract DemoSwapV2PairTest is Test, BaseDemoSwapV2Test {
 
         uint256 amount0Out = isWETHZero ? 0 : amountOut;
         uint256 amount1Out = isWETHZero ? amountOut : 0;
+        console2.log("amount0Out calculated: %18e, amount1Out calculated: %18e", amount0Out, amount1Out);
 
         uint256 preBalanceDAI = IERC20(DAI).balanceOf(testUser);
 
@@ -180,6 +189,7 @@ contract DemoSwapV2PairTest is Test, BaseDemoSwapV2Test {
 
         uint256 postBalanceDAI = IERC20(DAI).balanceOf(testUser);
         console2.log("Swapped 1 WETH for DAI: %18e", amountOut);
+        console2.log("DAI balance after swap: %18e", postBalanceDAI);
         assertEq(postBalanceDAI - preBalanceDAI, amountOut);
     }
 }

@@ -125,3 +125,13 @@ npx hardhat node
 ```bash
 forge script script/SetupLiquidity.sol -vvv
 ```
+
+## Test Cases
+
+- [x] Swap between two tokens
+- [x] Add liquidity to a pool
+- [x] Remove liquidity from a pool
+- [x] Code walkthrough IUniswapV2Pair interface
+- [x] Flash swap
+- [x] TWAP
+- [x] Flash swap arbitrage
